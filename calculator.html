@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calcy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Nunito', sans-serif;
+      background: linear-gradient(135deg, #fce4ec 0%, #e8f5e9 40%, #e3f2fd 80%, #fff9c4 100%);
+      background-attachment: fixed;
+    }
+
+    body::before, body::after {
+      content: '';
+      position: fixed; border-radius: 50%;
+      filter: blur(60px); opacity: 0.35; pointer-events: none; z-index: 0;
+    }
+    body::before { width:400px;height:400px;background:#f48fb1;top:-100px;left:-100px; }
+    body::after  { width:350px;height:350px;background:#90caf9;bottom:-80px;right:-80px; }
+
+    .calc-wrapper {
+      position: relative; z-index: 1;
+      animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes popIn {
+      from { opacity:0; transform:scale(0.85) translateY(30px); }
+      to   { opacity:1; transform:scale(1) translateY(0); }
+    }
+
+    .calc {
+      background: #ffffff;
+      border-radius: 32px;
+      padding: 24px 22px 22px;
+      width: 340px;
+      box-shadow: 0 2px 0 #e0e0e0, 0 8px 32px rgba(0,0,0,0.10), 0 32px 64px rgba(0,0,0,0.07);
+    }
+
+    .brand {
+      text-align: center; font-size: 11px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase; color: #bdbdbd; margin-bottom: 14px;
+    }
+
+    .display {
+      background: #f8f9fb;
+      border-radius: 20px;
+      padding: 14px 18px 12px;
+      margin-bottom: 20px;
+      min-height: 96px;
+      display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end;
+      border: 1.5px solid #eeeeee;
+      overflow: hidden;
+    }
+    .expr {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px; color: #b0bec5;
+      min-height: 18px; text-align: right; word-break: break-all;
+    }
+    .result {
+      font-family: 'DM Mono', monospace;
+      font-size: 40px; font-weight: 500; color: #37474f;
+      text-align: right; word-break: break-all; line-height: 1.1;
+      transition: font-size 0.12s;
+    }
+    .result.sm { font-size: 28px; }
+    .result.xs { font-size: 20px; }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    button {
+      border: none; border-radius: 16px;
+      height: 64px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 17px; font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.08s, box-shadow 0.08s, filter 0.08s;
+      outline: none;
+      position: relative; overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button::after {
+      content:''; position:absolute; inset:0;
+      background:white; opacity:0; border-radius:inherit; transition:opacity 0.15s;
+    }
+    button:hover::after  { opacity: 0.18; }
+    button:active        { transform: scale(0.92); box-shadow: none !important; }
+    button:active::after { opacity: 0.28; }
+
+    /* Numbers */
+    .num {
+      background: #f5f5f5; color: #37474f;
+      box-shadow: 0 3px 0 #ddd, 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .num:hover { filter: brightness(0.96); }
+    .zero { grid-column: span 2; border-radius: 20px; }
+
+    /* Operator — coral */
+    .op {
+      background: linear-gradient(135deg,#ff8a65,#ff7043); color:#fff;
+      box-shadow: 0 3px 0 #e64a19, 0 4px 14px rgba(255,112,67,0.30);
+    }
+    /* Lit-up state when operator is active */
+    .op.lit {
+      background: linear-gradient(135deg,#fff3e0,#ffe0b2); color:#e64a19;
+      box-shadow: 0 3px 0 #ffcc80, 0 4px 10px rgba(255,112,67,0.20);
+    }
+
+    /* Special — sky blue */
+    .special {
+      background: linear-gradient(135deg,#64b5f6,#42a5f5); color:#fff;
+      box-shadow: 0 3px 0 #1976d2, 0 4px 14px rgba(66,165,245,0.30);
+    }
+
+    /* Clear — rose */
+    .clear {
+      background: linear-gradient(135deg,#f48fb1,#f06292); color:#fff;
+      box-shadow: 0 3px 0 #c2185b, 0 4px 14px rgba(240,98,146,0.30);
+    }
+
+    /* Back — amber */
+    .back {
+      background: linear-gradient(135deg,#ffd54f,#ffb300); color:#fff;
+      box-shadow: 0 3px 0 #f57f17, 0 4px 14px rgba(255,179,0,0.30);
+      font-size: 20px;
+    }
+
+    /* Equals — green */
+    .eq {
+      background: linear-gradient(135deg,#81c784,#66bb6a); color:#fff;
+      box-shadow: 0 3px 0 #388e3c, 0 4px 14px rgba(102,187,106,0.30);
+      font-size: 22px;
+    }
+
+    /* Decimal — lavender */
+    .dot {
+      background: linear-gradient(135deg,#ce93d8,#ba68c8); color:#fff;
+      box-shadow: 0 3px 0 #7b1fa2, 0 4px 14px rgba(186,104,200,0.28);
+    }
+
+    @keyframes ripple {
+      from { transform:scale(0); opacity:0.45; }
+      to   { transform:scale(4); opacity:0; }
+    }
+    .rpl {
+      position:absolute; width:40px; height:40px; border-radius:50%;
+      background:white; pointer-events:none;
+      transform:scale(0); animation:ripple 0.4s ease-out forwards;
+      margin-left:-20px; margin-top:-20px;
+    }
+
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%    {transform:translateX(-7px)}
+      40%    {transform:translateX(7px)}
+      60%    {transform:translateX(-4px)}
+      80%    {transform:translateX(4px)}
+    }
+    .shake { animation: shake 0.35s ease both; }
+  </style>
+</head>
+<body>
+<div class="calc-wrapper">
+  <div class="calc">
+    <div class="brand">✦ Calcy ✦</div>
+    <div class="display">
+      <div class="expr"   id="expr"></div>
+      <div class="result" id="result">0</div>
+    </div>
+    <div class="keys">
+      <button class="clear"   id="ac-btn">AC</button>
+      <button class="special" id="sign-btn">+/−</button>
+      <button class="special" id="pct-btn">%</button>
+      <button class="op"      id="op-div" data-op="÷">÷</button>
+
+      <button class="num" data-d="7">7</button>
+      <button class="num" data-d="8">8</button>
+      <button class="num" data-d="9">9</button>
+      <button class="op"  id="op-mul" data-op="×">×</button>
+
+      <button class="num" data-d="4">4</button>
+      <button class="num" data-d="5">5</button>
+      <button class="num" data-d="6">6</button>
+      <button class="op"  id="op-sub" data-op="−">−</button>
+
+      <button class="num" data-d="1">1</button>
+      <button class="num" data-d="2">2</button>
+      <button class="num" data-d="3">3</button>
+      <button class="op"  id="op-add" data-op="+">+</button>
+
+      <button class="num zero" data-d="0">0</button>
+      <button class="dot"  id="dot-btn">.</button>
+      <button class="back" id="back-btn">⌫</button>
+      <button class="eq"   id="eq-btn">=</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /*
+    STATES
+    ──────
+    'input'   → user is actively typing digits into `current`
+    'op_set'  → an operator was just pressed; waiting for the second number
+    'result'  → equals was pressed; showing final answer
+  */
+  let state     = 'input';   // 'input' | 'op_set' | 'result'
+  let operand1  = null;      // first stored number (string)
+  let pendingOp = null;      // stored operator
+  let current   = '0';      // what's shown on the display
+
+  const exprEl   = document.getElementById('expr');
+  const resultEl = document.getElementById('result');
+
+  /* ── display helper ── */
+  function setDisplay(val, expr) {
+    if (expr === undefined) expr = '';
+    resultEl.textContent = val;
+    exprEl.textContent   = expr;
+    const n = String(val).replace('-','').length;
+    resultEl.className   = 'result' + (n > 12 ? ' xs' : n > 8 ? ' sm' : '');
+  }
+
+  /* ── highlight the active operator button ── */
+  function litOp(sym) {
+    document.querySelectorAll('.op').forEach(b => b.classList.remove('lit'));
+    if (sym) {
+      const b = document.querySelector(`.op[data-op="${sym}"]`);
+      if (b) b.classList.add('lit');
+    }
+  }
+
+  /* ── safe number formatter ── */
+  function fmt(n) {
+    if (!isFinite(n)) return 'Error';
+    const s = parseFloat(n.toPrecision(10));
+    return String(s);
+  }
+
+  /* ── arithmetic ── */
+  function compute(a, op, b) {
+    a = parseFloat(a); b = parseFloat(b);
+    if (op === '+') return a + b;
+    if (op === '−') return a - b;
+    if (op === '×') return a * b;
+    if (op === '÷') return b === 0 ? Infinity : a / b;
+    return b;
+  }
+
+  /* ── error display ── */
+  function showError() {
+    state = 'input'; operand1 = null; pendingOp = null; current = '0';
+    litOp(null);
+    resultEl.textContent = 'Error';
+    resultEl.classList.add('shake');
+    setTimeout(() => { resultEl.classList.remove('shake'); setDisplay('0'); }, 800);
+  }
+
+  /* ════════════════════════════════════
+     ACTION HANDLERS
+  ════════════════════════════════════ */
+
+  function onDigit(d) {
+    if (state === 'op_set') {
+      // Starting to type the second operand
+      current = (d === '0') ? '0' : d;
+      state   = 'input';
+    } else if (state === 'result') {
+      // After equals: start a brand-new calculation
+      current = (d === '0') ? '0' : d;
+      operand1 = null; pendingOp = null;
+      state = 'input';
+      litOp(null);
+    } else {
+      // Normal input — append digit
+      if (current.length >= 15) return;
+      current = (current === '0' && d !== '.') ? d : current + d;
+    }
+    setDisplay(current, pendingOp ? `${operand1} ${pendingOp}` : '');
+  }
+
+  function onDecimal() {
+    if (state === 'op_set') {
+      current = '0.'; state = 'input';
+    } else if (state === 'result') {
+      current = '0.'; operand1 = null; pendingOp = null; state = 'input'; litOp(null);
+    } else {
+      if (current.includes('.')) return; // already has dot
+      current += '.';
+    }
+    setDisplay(current, pendingOp ? `${operand1} ${pendingOp}` : '');
+  }
+
+  function onOperator(op) {
+    if (state === 'op_set') {
+      // User changed operator before typing 2nd number — just swap it
+      pendingOp = op;
+      litOp(op);
+      setDisplay(current, `${operand1} ${op}`);
+      return;
+    }
+
+    if (state === 'input' && operand1 !== null && pendingOp !== null) {
+      // Chain calculation: compute what we have first
+      const res = compute(operand1, pendingOp, current);
+      if (!isFinite(res)) { showError(); return; }
+      current = fmt(res);
+    }
+
+    // Store first operand and wait for second
+    operand1  = current;
+    pendingOp = op;
+    state     = 'op_set';
+    litOp(op);
+    setDisplay(current, `${operand1} ${op}`);
+  }
+
+  function onEquals() {
+    // Need: a stored operand, a pending operator, AND the user to have typed a 2nd number
+    if (pendingOp === null || state === 'op_set') return;
+
+    const res = compute(operand1, pendingOp, current);
+    if (!isFinite(res)) { showError(); return; }
+
+    const expr  = `${operand1} ${pendingOp} ${current} =`;
+    current     = fmt(res);
+    operand1    = null;
+    pendingOp   = null;
+    state       = 'result';
+    litOp(null);
+    setDisplay(current, expr);
+  }
+
+  function onBack() {
+    if (state !== 'input') return;   // only works while actively entering a number
+    if (current.length <= 1 || current === '-0') {
+      current = '0';
+    } else {
+      current = current.slice(0, -1);
+      if (current === '-' || current === '') current = '0';
+    }
+    setDisplay(current, pendingOp ? `${operand1} ${pendingOp}` : '');
+  }
+
+  function onClear() {
+    state = 'input'; operand1 = null; pendingOp = null; current = '0';
+    litOp(null);
+    setDisplay('0', '');
+  }
+
+  function onSign() {
+    if (current === '0') return;
+    current = current.startsWith('-') ? current.slice(1) : '-' + current;
+    setDisplay(current, pendingOp ? `${operand1} ${pendingOp}` : '');
+  }
+
+  function onPercent() {
+    const v = parseFloat(current) / 100;
+    current = fmt(v);
+    setDisplay(current, pendingOp ? `${operand1} ${pendingOp}` : '');
+  }
+
+  /* ── ripple helper ── */
+  function ripple(btn, e) {
+    const r    = document.createElement('span');
+    r.className = 'rpl';
+    const rect  = btn.getBoundingClientRect();
+    r.style.left = (e.clientX - rect.left) + 'px';
+    r.style.top  = (e.clientY - rect.top)  + 'px';
+    btn.appendChild(r);
+    setTimeout(() => r.remove(), 450);
+  }
+
+  /* ── wire up all buttons ── */
+  document.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', e => {
+      ripple(btn, e);
+      if (btn.dataset.d  !== undefined) { onDigit(btn.dataset.d);   return; }
+      if (btn.dataset.op !== undefined) { onOperator(btn.dataset.op); return; }
+      const id = btn.id;
+      if (id === 'ac-btn')   onClear();
+      if (id === 'sign-btn') onSign();
+      if (id === 'pct-btn')  onPercent();
+      if (id === 'dot-btn')  onDecimal();
+      if (id === 'back-btn') onBack();
+      if (id === 'eq-btn')   onEquals();
+    });
+  });
+
+  /* ── keyboard support ── */
+  document.addEventListener('keydown', e => {
+    const k = e.key;
+    if ('0123456789'.includes(k))                        { e.preventDefault(); onDigit(k); }
+    else if (k === '+')                                   { e.preventDefault(); onOperator('+'); }
+    else if (k === '-')                                   { e.preventDefault(); onOperator('−'); }
+    else if (k === '*')                                   { e.preventDefault(); onOperator('×'); }
+    else if (k === '/')                                   { e.preventDefault(); onOperator('÷'); }
+    else if (k === 'Enter' || k === '=')                  { e.preventDefault(); onEquals(); }
+    else if (k === 'Backspace')                           { e.preventDefault(); onBack(); }
+    else if (k === 'Escape')                              { e.preventDefault(); onClear(); }
+    else if (k === '.')                                   { e.preventDefault(); onDecimal(); }
+    else if (k === '%')                                   { e.preventDefault(); onPercent(); }
+  });
+</script>
+</body>
+</html>
